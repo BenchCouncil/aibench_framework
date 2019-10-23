@@ -1,0 +1,11 @@
+[Unit]
+Description=Search Planer
+After=syslog-ng.service
+ 
+[Service]
+User=sally.lxl
+ExecStart=/usr/bin/java -jar "{{ home_dir }}/benchmark.jar"
+SuccessExitStatus=143 
+ 
+[Install] 
+WantedBy=multi-user.target

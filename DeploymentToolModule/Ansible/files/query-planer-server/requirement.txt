@@ -1,0 +1,4 @@
+requests
+fasttext==0.8.3
+jieba
+neo4j

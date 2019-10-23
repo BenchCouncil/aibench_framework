@@ -1,0 +1,12 @@
+---
+search_planer_ip: ${SEARCH_PLANER_HOST}
+excellent_items_cluster_master_ip: ${EXCELLENT_ITEMS_CLUSTER_MASTER_HOST}
+good_items_cluster_master_ip: ${GOOD_ITEMS_CLUSTER_MASTER_HOST}
+bad_items_cluster_master_ip: ${BAD_ITEMS_CLUSTER_MASTER_HOST}
+ranking_system_ip: ${RANKING_SYSTEM_HOST}
+summary_cluster_ip: ${SUMMARY_CLUSTER_HOST}
+neo4j_ip: ${NEO4J_HOST}
+query_planer_ip: ${QUERY_PLANER_HOST}
+tf_serving_ip: ${TF_SERVING_HOST}
+
+home_dir: "${HOME_DIR}"

@@ -1,0 +1,159 @@
+---
+- hosts: localhost
+  tasks:
+  - name: Install jdk 8 for compile search planer project
+    become: yes
+    yum:
+      name: java-1.8.0-openjdk-devel
+      state: present
+  - name: Template search planer web server file
+    template:
+      src: templates/application.properties.j2
+      dest: ../../search-planer/src/main/resources/application.properties
+  - name: Template search planer application config file 
+    template:
+      src: templates/factorybean-spring-ctx.xml.j2
+      dest: ../../search-planer/src/main/resources/factorybean-spring-ctx.xml 
+  - name: Assemble search planer project
+    command: ./gradlew assemble
+    args:
+      chdir: ../../ 
+
+- hosts: all
+  tasks:
+  - name: Install fundamental package
+    become: yes
+    yum:
+      name:
+        - python-pip
+        - python-virtualenv
+      state: present
+
+  - name: Pip install docker module
+    become: yes
+    pip:
+      name: docker
+      extra_args: -i https://mirrors.aliyun.com/pypi/simple
+
+  - name: Pip install jmespath module
+    become: yes
+    pip:
+      name: jmespath
+
+  - name: Pull Neo4j & tf-serving docker image
+    become: yes
+    docker_image:
+      name: "{{ item }}"
+    with_items:
+      - neo4j:3.5.5
+      - tensorflow/serving
+
+- hosts: excellent_items_cluster, good_items_cluster, bad_items_cluster, ranking_system, summary_cluster
+  roles:
+    - role: ansible-elasticsearch
+  vars:
+    es_instance_name: "es-{{ ansible_host }}"
+    es_heap_size: "8g"
+    es_api_host: "{{ ansible_host }}"
+    es_config:
+      cluster.name: "{{ cluster_name }}"
+      network.host: "{{ ansible_host }}"
+      discovery.zen.ping.unicast.hosts: "{{ ansible_host }}:9300"
+      http.port: 9200
+      transport.tcp.port: 9300
+      node.master: true
+      node.data: true
+      bootstrap.memory_lock: false
+    es_scripts: false
+    es_templates: false
+    es_version_lock: false
+    es_plugins:
+      - plugin: https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v6.5.2/elasticsearch-analysis-ik-6.5.2.zip
+
+ 
+- hosts: neo4j
+  tasks:
+  - name: Create Neo4j data directory
+    file:
+      path: "{{ home_dir }}/neo4j/data"
+      state: directory
+
+  - name: Start Neo4j service
+    become: yes
+    docker_container:
+      name: neo4j
+      image: neo4j:3.5.5
+      state: started
+      ports: 
+        - "7474:7474"
+        - "7687:7687"
+      volumes:
+        - "{{ home_dir }}/neo4j/data:/data"
+      env:
+        NEO4J_AUTH: none
+
+
+- hosts: tf_serving
+  tasks:
+  - name: Copy ranking models
+    copy:
+      src: files/tf-serving
+      dest: "{{ home_dir }}/"
+
+  - name: Start tf serving service
+    become: yes
+    docker_container:
+      name: tf-serving
+      image: tensorflow/serving
+      ports:
+        - "8501:8501"
+      volumes:
+        - "{{ home_dir }}/tf-serving/ranking_weights_model:/models/ranking_weights_model"
+      env:
+        MODEL_NAME: ranking_weights_model
+
+
+- hosts: query_planer
+  tasks:
+  - name: Copy flask web project
+    copy:
+      src: files/query-planer-server
+      dest: "{{ home_dir }}/"
+  
+  - name: Template main.py
+    template:
+      src: templates/main.py.j2
+      dest: "{{ home_dir }}/query-planer-server/app/main.py"
+  
+  - name: Build docker image
+    become: yes
+    docker_image:
+      path: "{{ home_dir }}/query-planer-server"
+      name: query_planer
+
+  - name: Start query planer container
+    become: yes
+    docker_container:
+      name: query_planer
+      image: query_planer
+      state: started
+      restart: yes
+      ports:
+        - "8080:8080"
+
+- hosts: search_planer
+  tasks:
+      - name: Copy flat jar to search planer server
+        copy:
+          src: ../../search-planer/build/libs/search-planer-0.0.1-SNAPSHOT.jar
+          dest: "{{ home_dir }}/benchmark.jar"
+      - name: Copy systemd service file
+        become: yes
+        template:
+          src: templates/search-planer.service.j2
+          dest: /usr/lib/systemd/system/search-planer.service
+      - name: Start search planer server
+        become: yes
+        systemd:
+          name: search-planer
+          state: restarted

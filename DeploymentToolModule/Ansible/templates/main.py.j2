@@ -1,0 +1,56 @@
+from flask import Flask
+from flask import request
+from flask import jsonify
+from flask import Response
+
+import fasttext
+import jieba
+import requests
+
+import numpy as np
+
+from neo4j import GraphDatabase
+
+app = Flask(__name__)
+category_classifier = fasttext.load_model('/app/category_classifier.bin', label_prefix='__label__')
+driver = GraphDatabase.driver("bolt://{{ neo4j_ip }}:7687")
+# ranking_weights_model = keras.models.load_model('ranking_weights_model.h5')
+
+@app.route("/")
+def hello():
+    return "Hello World from Flask in a uWSGI Nginx Docker container with \
+     Python 3.7 (from the example template)"
+
+
+@app.route("/query", methods=['POST'])
+def analyse_query():
+
+    data = request.get_json()
+    uid = data['uid']
+    query = data['query']
+
+    with driver.session() as session:
+        result = session.run("MATCH (user:User {uid: $uid}) RETURN user", uid=uid)
+    record = result.single()
+    user = record['user']
+
+    category = int(category_classifier.predict(query)[0][0])
+    payload = {
+            "instances": [
+                {
+                    "category": [category],
+                    "sex": [user['sex']],
+                    "age": [user['age']],
+                    "power": [user['power']]
+                    }
+                ]
+            }
+    ranking_weights = requests.post('http://{{ tf_serving_ip }}:8501/v1/models/ranking_weights_model:predict', json=payload)
+    # query_feature = [[category], [2], [0], [3]]
+    # ranking_weights = ranking_weights_model.predict([[2345], [0], [28], [5]])
+    return Response(ranking_weights.content, mimetype="application/json")
+
+
+if __name__ == "__main__":
+    # Only for debugging while developing
+    app.run(host='0.0.0.0', port=8080)

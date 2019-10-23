@@ -1,0 +1,49 @@
+localhost ansible_connection=local
+
+[search_planer]
+"{{ search_planer_ip }}"
+
+[excellent_items_cluster]
+"{{ excellent_items_cluster_master_ip }}"
+
+[excellent_items_cluster:vars]
+cluster_name=excellent_items_cluster
+unicast_hosts="{{ excellent_items_cluster_master_ip }}:9300"
+
+[good_items_cluster]
+"{{ good_items_cluster_master_ip }}"
+
+[good_items_cluster:vars]
+cluster_name=good_items_cluster
+unicast_hosts="{{ good_items_cluster_master_ip }}:9300"
+
+[bad_items_cluster]
+"{{ bad_items_cluster_master_ip }}"
+
+[bad_items_cluster:vars]
+cluster_name=bad_items_cluster
+unicast_hosts="{{ bad_items_cluster_master_ip }}:9300"
+
+[ranking_system]
+"{{ ranking_system_ip }}"
+
+[ranking_system:vars]
+cluster_name=ranking_system
+unicast_hosts="{{ ranking_system_ip }}:9300"
+
+[summary_cluster]
+"{{ summary_cluster_ip }}"
+
+[summary_cluster:vars]
+cluster_name=summary_cluster
+unicast_hosts="{{ summary_cluster_ip }}:9300"
+
+[neo4j]
+"{{ neo4j_ip }}"
+
+[query_planer]
+"{{ query_planer_ip }}"
+
+[tf_serving]
+"{{ tf_serving_ip }}"
+
