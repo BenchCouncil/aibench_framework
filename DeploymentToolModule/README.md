@@ -1,4 +1,4 @@
-#Ansible can help you quickly deploy the online module. 
+# Ansible can help you quickly deploy the online module. 
 
 1. You need to install Ansible on the control host and python on other controlled machines. 
 2. Modify the groups/all file, and replace the host to the corresponding host according to  your need.
